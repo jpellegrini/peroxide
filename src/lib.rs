@@ -33,7 +33,7 @@ use arena::Arena;
 use ast::SyntaxElement;
 use environment::{ActivationFrame, ActivationFrameInfo, Environment, RcEnv};
 use heap::RootPtr;
-use read::read_many;
+use read::Reader;
 use value::Value;
 
 pub mod arena;
@@ -136,7 +136,8 @@ impl Interpreter {
 
     pub fn initialize(&self, fname: &str) -> Result<(), String> {
         let contents = fs::read_to_string(fname).map_err(|e| e.to_string())?;
-        let values = read_many(&self.arena, &contents)?;
+        let values =
+            Reader::new(&self.arena, true, Rc::new("<stdlib>".to_string())).read_many(&contents)?;
         //println!("Values: {:?}", values);
         for v in values.into_iter() {
             // println!("eval> {}", pretty_print(arena, v.pp()));

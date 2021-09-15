@@ -17,8 +17,10 @@ extern crate peroxide;
 extern crate rustyline;
 
 use std::env;
+use std::rc::Rc;
 
 use peroxide::lex::{PositionedToken, SegmentationResult};
+use peroxide::read::Reader;
 use peroxide::repl::{FileRepl, GetLineError, ReadlineRepl, Repl, StdIoRepl};
 use peroxide::Interpreter;
 
@@ -132,7 +134,8 @@ fn handle_one_expr(
 
 fn rep(vm_state: &Interpreter, toks: Vec<Vec<PositionedToken>>, silent: bool) -> Result<(), ()> {
     for token_vector in toks {
-        let parse_value = peroxide::read::read_tokens(&vm_state.arena, &token_vector)
+        let parse_value = Reader::new(&vm_state.arena, true, Rc::new("<repl>".to_string()))
+            .read_tokens(&token_vector)
             .map_err(|e| println!("parse error: {:?}", e))?;
 
         match vm_state.parse_compile_run(parse_value) {
