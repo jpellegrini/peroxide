@@ -37,9 +37,8 @@ use std::ops::Deref;
 use std::pin::Pin;
 use std::rc::{Rc, Weak};
 
-use value::Value;
-
 use bitvec::prelude::BitBox;
+use value::Value;
 use vm::Vm;
 
 const POOL_ENTRIES: u16 = 1 << 8;
