@@ -17,8 +17,8 @@ extern crate peroxide;
 use std::rc::Rc;
 
 use peroxide::error::locate_message;
-use peroxide::heap::RootPtr;
-use peroxide::read::{NoParseResult, Reader};
+use peroxide::heap::{GcMode, RootPtr, RootPtr};
+use peroxide::read::{read_many, NoParseResult, Reader};
 use peroxide::value::Value;
 use peroxide::Interpreter;
 
@@ -60,7 +60,7 @@ fn magic_execute_to_vec(code: &str, init: bool) -> Result<Vec<Value>, String> {
 }
 
 fn make_interpreter(init: bool) -> Interpreter {
-    let interpreter = Interpreter::new();
+    let interpreter = Interpreter::new(GcMode::Normal);
     if init {
         interpreter.initialize("src/scheme-lib/init.scm").unwrap();
     }

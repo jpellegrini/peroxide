@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+extern crate clap;
 extern crate core;
 extern crate peroxide;
 extern crate rustyline;
 
 use std::env;
 use std::rc::Rc;
+use std::str::FromStr;
 
+use clap::{App, Arg};
 use peroxide::error::locate_message;
+use peroxide::heap::GcMode;
 use peroxide::lex::{PositionedToken, SegmentationResult};
 use peroxide::read::Reader;
 use peroxide::repl::{FileRepl, GetLineError, ReadlineRepl, Repl, StdIoRepl};
@@ -39,7 +43,7 @@ fn main() {
 
 fn do_main(args: Vec<String>) -> Result<(), String> {
     let options = parse_args(&args.iter().map(|x| &**x).collect::<Vec<_>>())
-        .map_err(|e| format!("Could not parse arguments: {}", e))?;
+        .map_err(|e| format!("could not parse arguments: {}", e))?;
 
     let silent = options.input_file.is_some();
     let mut repl: Box<dyn Repl> = match options.input_file {
@@ -53,11 +57,10 @@ fn do_main(args: Vec<String>) -> Result<(), String> {
         }
     };
 
-    let interpreter = Interpreter::new();
+    let interpreter = Interpreter::new(options.gc_mode);
     let interruptor_clone = interpreter.interruptor();
 
     ctrlc::set_handler(move || {
-        println!("Ctrl+C received!");
         interruptor_clone.interrupt();
     })
     .map_err(|e| format!("error setting Ctrl+C handler: {}", e.to_string()))?;
@@ -159,23 +162,36 @@ struct Options {
     pub enable_readline: bool,
     pub no_std: bool,
     pub input_file: Option<String>,
+    pub gc_mode: GcMode,
 }
 
-// TODO emit sensible error / warning messages
 fn parse_args(args: &[&str]) -> Result<Options, String> {
-    let (mut positional, flags): (Vec<&str>, Vec<&str>) =
-        args.iter().skip(1).partition(|s| !s.starts_with("--"));
+    let matches = App::new("Peroxide")
+        .version("0.1")
+        .author("Matthieu Felix <matthieufelix@gmail.com>")
+        .arg(
+            Arg::with_name("no-std")
+                .long("no-std")
+                .help("Do not load the standard library"),
+        )
+        .arg(
+            Arg::with_name("no-readline")
+                .long("no-readline")
+                .help("Disable readline library"),
+        )
+        .arg(
+            Arg::with_name("gc-mode")
+                .long("gc-mode")
+                .possible_values(&["off", "normal", "debug", "debug-heavy"])
+                .default_value("normal"),
+        )
+        .arg(Arg::with_name("input-file").help("Sets the input file to use"))
+        .get_matches_from(args);
 
-    let enable_readline = !flags.iter().any(|&x| x == "--no-readline");
-    let no_std = flags.iter().any(|&x| x == "--no-std");
-    let input_file = if positional.len() <= 1 {
-        positional.pop().map(ToString::to_string)
-    } else {
-        return Err("Too many positional arguments.".into());
-    };
     Ok(Options {
-        enable_readline,
-        no_std,
-        input_file,
+        enable_readline: !matches.is_present("no-readline"),
+        no_std: matches.is_present("no-std"),
+        input_file: matches.value_of("input-file").map(|v| v.to_string()),
+        gc_mode: GcMode::from_str(matches.value_of("gc-mode").unwrap()).unwrap(),
     })
 }

@@ -33,7 +33,7 @@ use arena::Arena;
 use ast::SyntaxElement;
 use environment::{ActivationFrame, ActivationFrameInfo, Environment, RcEnv};
 use error::locate_message;
-use heap::RootPtr;
+use heap::{GcMode, RootPtr};
 use read::{NoParseResult, Reader};
 use value::Value;
 
@@ -82,15 +82,9 @@ impl Drop for Interpreter {
     fn drop(&mut self) {}
 }
 
-impl Default for Interpreter {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Interpreter {
-    pub fn new() -> Self {
-        let arena = Arena::default();
+    pub fn new(gc_mode: GcMode) -> Self {
+        let arena = Arena::with_gc_mode(gc_mode);
         let global_environment = Rc::new(RefCell::new(Environment::new(None)));
         let global_frame =
             arena.insert_rooted(Value::ActivationFrame(RefCell::new(ActivationFrame {
