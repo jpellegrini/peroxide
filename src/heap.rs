@@ -39,6 +39,7 @@ use std::rc::{Rc, Weak};
 use std::str::FromStr;
 
 use bitvec::prelude::BitBox;
+use log::{debug, trace};
 use value::Value;
 use vm::Vm;
 
@@ -180,7 +181,7 @@ impl Pool {
     fn allocate(self: Pin<&mut Self>, value: Value) -> Option<PoolPtr> {
         let selr = unsafe { self.get_unchecked_mut() };
         if let Some(old_free_index) = selr.free_block {
-            // println!("allocating {:?} at {}", &value, old_free_index);
+            trace!("ALLC(pool) {:?} at {}", &value, old_free_index);
             let next = if let PoolEntry::Free(ref e) = selr.data[usize::from(old_free_index)] {
                 e.next
             } else {
@@ -250,11 +251,7 @@ impl Pool {
         let init = selr.allocated;
         for (i_mark, mark) in selr.marked.clone().iter().enumerate() {
             if !mark && !selr.data[i_mark].is_free() {
-                /*
-                if let PoolEntry::Used(UsedPoolEntry(Value::CodeBlock(_))) = &selr.data[i_mark] {
-                    println!("Freeing code block at {:?} / {}", selr as *const Pool, i_mark);
-                }
-                */
+                trace!("FREE {:?} / {}", selr as *const Pool, i_mark);
                 selr.free_ref(u16::try_from(i_mark).unwrap(), debug)
             }
         }
@@ -368,11 +365,13 @@ impl Default for Heap {
 impl Heap {
     fn allocate(&mut self, v: Value) -> PoolPtr {
         if self.gc_mode == GcMode::DebugHeavy {
+            debug!("running GC");
             self.gc();
+            debug!("done with GC");
         } else if self.gc_mode.is_normal() && self.allocated_values > self.next_gc {
-            // println!("running GC");
+            debug!("running GC");
             self.gc();
-            // println!("ran GC");
+            debug!("done with GC");
             self.next_gc = (self.allocated_values as f32 * GC_GROWTH) as usize;
         }
 
@@ -391,7 +390,7 @@ impl Heap {
             self.full_pools.push(pool);
         }
         self.allocated_values += 1;
-        // println!("Allocated {:?} for {:?}", ptr, *ptr);
+        trace!("ALLC(heap) {:?} for {:?}", ptr, *ptr);
         ptr
     }
 
@@ -407,12 +406,12 @@ impl Heap {
             .find(|(_i, e)| e.is_none());
         match empty {
             Some((i_r, r)) => {
-                // println!("rooted {:?} at {}", p, i_r);
+                trace!("ROOT {:?} at {}", p, i_r);
                 *r = Some(p);
                 i_r
             }
             None => {
-                // println!("rooted {:?} at {}", p, self.roots.len());
+                trace!("ROOT {:?} at {}", p, self.roots.len());
                 self.roots.push(Some(p));
                 self.roots.len() - 1
             }
@@ -540,7 +539,11 @@ impl Drop for RootPtr {
         // TODO - another option is do just ignore dead heaps as there's no need to unroot.
         //        however, a destroyed heap can mean that we have other dangling pointers.
         unsafe { &mut *self.heap.upgrade().expect("heap destroyed").get() }.roots[self.idx] = None;
-        // println!("unrooted {{ pool: {:p}, idx: {} }}", self.heap.upgrade().unwrap(), self.idx);
+        trace!(
+            "UNRT {{ pool: {:p}, idx: {} }}",
+            self.heap.upgrade().unwrap(),
+            self.idx
+        );
     }
 }
 

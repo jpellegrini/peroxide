@@ -201,6 +201,7 @@ pub fn parse(
     value: PoolPtr,
     source: Source,
 ) -> Result<LocatedSyntaxElement, String> {
+    // TODO remove the hold? It says just above that we don't need it...
     let _value_hold = arena.root(value);
     let (env, value) = resolve_syntactic_closure(arena, env, value)?;
     match &*value {
