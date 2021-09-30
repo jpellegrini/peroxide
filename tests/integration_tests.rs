@@ -17,8 +17,8 @@ extern crate peroxide;
 use std::rc::Rc;
 
 use peroxide::error::locate_message;
-use peroxide::heap::{GcMode, RootPtr, RootPtr};
-use peroxide::read::{read_many, NoParseResult, Reader};
+use peroxide::heap::{GcMode, RootPtr};
+use peroxide::read::{NoParseResult, Reader};
 use peroxide::value::Value;
 use peroxide::Interpreter;
 
